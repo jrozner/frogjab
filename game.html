@@ -1,0 +1,153 @@
+<!doctype html>
+<html><head>
+		<title>FrogJab</title>
+		<link href='http://fonts.googleapis.com/css?family=Frijole' rel='stylesheet' type='text/css'>
+	<link rel="stylesheet" href="main.css">
+	<script src="http://code.jquery.com/jquery-1.7.1.min.js"></script>
+	<script src="http://127.0.0.1:8080/socket.io/socket.io.js"></script>
+</head><body>
+
+<div id="bg"></div>
+	<div id="main">
+		<p id="announce"></p>
+		<div id="lily_left"></div>
+		<div id="lily_right"></div>
+		<div id="frogleft" class="left_closed"></div>
+		<div id="frogright" class="right_closed"></div>
+		<canvas id="canvas" width="730" height="600"></canvas>
+	</div>
+
+	<div id="logo">FrogJab</div>
+
+
+	<script>
+		var canvas = document.getElementById("canvas");
+		var ctx = canvas.getContext("2d"); 
+
+		function tongue(left,fly){
+			ctx.beginPath();
+			if(left) ctx.moveTo(0, 290); 
+			else ctx.moveTo(730, 300); 
+			ctx.lineTo(parseInt($(fly.get()).position().top), parseInt($(fly.get()).position().left)+100); 
+			$(fly.get()).remove();
+			ctx.strokeStyle = "red";
+			ctx.lineWidth=8;
+			ctx.stroke();
+			setTimeout(function(){
+				ctx.clearRect (0 ,0 , 730 , 600 );
+			},400);
+		}
+
+
+		var frogClicked=true;
+
+			var socket=io.connect("http://127.0.0.1:8080/");
+			var flyList = {};
+
+			$('#frogleft').mousedown(function(){
+				$(this).removeClass().addClass('left_open');
+				socket.emit('click');
+				for(var i in flyList){
+					tongue(false,flyList[i]);
+					break;
+				}
+			});
+
+			$('#frogleft').mouseup(function(){
+				$(this).removeClass().addClass('left_closed');
+			});
+
+			$('#frogright').mousedown(function(){
+				/*$(this).removeClass().addClass('right_open');
+				socket.emit('click');
+				tongue(true);*/
+			});
+
+			$('#frogright').mouseup(function(){
+				$(this).removeClass().addClass('right_closed');
+			});
+
+			socket.on('ready',function(){
+				// start game
+			});
+
+			socket.on('removeFly',function(fly){
+				//console.log(fly);
+				//tongue(frogClicked,flyList[fly]);
+				$(flyList[fly].get()).remove();
+		//		console.log($(flyList[fly].get()).css("top"));
+			});
+
+			socket.on('flyList',function(fl){
+				for(var i in fl){
+					if(!flyList[i]){
+						flyList[i]=new Fly( fl[i][0], fl[i][1]);
+					}
+					flyList[i].setPos(fl[i][0], fl[i][1]);
+				}
+			});
+
+			socket.on('removeFly',function(index){
+				$(index).remove();
+				delete flyList[index];
+			});
+
+			socket.on('gameEnd',function() {
+				$('p#announce').html('Player 2 has won the game!');
+				$('p#announce').show();
+			});
+
+			socket.on('userDisconnect',function(){
+				$('p#announce').val('has one the game!');
+				$('p#announce').show();
+			});
+
+		function Fly(x,y){
+			var self=this;
+			var fly=document.createElement('div');
+			fly.className="fly";
+			$('#main').append(fly);
+
+			this.setPos=function(x,y){
+				$(fly).css({top:y,left:x});
+			};
+
+			this.setPos(x,y);
+
+			this.hide=function(){
+				$(fly).hide();
+			};
+
+			this.get=function(){
+				return fly;
+			}
+
+
+		}
+
+
+		var theta=0;
+
+
+
+		function getPos(pathX,pathY,pathWidth,pathHeight,pathR,theta){
+			var ox=pathX+pathWidth/2;
+			var oy=pathY+pathHeight/2;
+			var x,y;
+			if(theta<50){
+				x=pathX+(1+Math.sin(2*Math.PI*theta/49))*pathWidth/2;
+				y=pathY+pathHeight*theta/49;
+			}else{
+				x=pathX+(1+Math.sin(2*Math.PI*(theta-50)/49))*pathWidth/2;
+				y=pathY+pathHeight*(1-(theta-50)/49);
+			}
+			var nx=x-ox,ny=y-oy;
+			x-=ox; y-=oy;
+			nx=x*Math.cos(pathR)-y*Math.sin(pathR);
+			ny=x*Math.sin(pathR)+y*Math.cos(pathR);
+			nx+=ox; ny+=oy;
+			return [nx,ny];
+		}
+
+	</script>
+</body></html>

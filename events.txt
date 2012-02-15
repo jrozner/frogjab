@@ -1,0 +1,7 @@
+connection
+disconnect
+ready
+flyList
+removeFly
+gameEnd
+userDisconnect
